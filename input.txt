@@ -1,0 +1,23 @@
+Bienvenue dans la deuxième section de notre cours sur Java, où nous allons explorer ensemble ce que signifie "programmer". La programmation est comme l'art de donner des instructions à un ordinateur pour qu'il effectue des tâches spécifiques. C'est un peu comme créer une recette de cuisine que l'ordinateur doit suivre à la lettre.
+
+1. La Programmation : Un Langage entre Vous et l'Ordinateur
+
+Imaginez que vous avez une idée géniale, comme créer un jeu vidéo ou une application pour aider à organiser vos devoirs. La programmation est l'outil qui vous permet de transformer cette idée en réalité. Pour cela, vous utilisez un langage de programmation, comme Java, qui est un moyen de communiquer avec l'ordinateur.
+
+2. Écrire un Code : Raconter une Histoire à l'Ordinateur
+
+Quand vous programmez, vous écrivez du "code". Ce code est une suite d'instructions que l'ordinateur suit pour réaliser une tâche. C'est comme raconter une histoire ou donner une série d'ordres. Chaque ligne de code est une étape que l'ordinateur doit exécuter.
+
+3. La Logique de Programmation : Penser comme un Programmeur
+
+Programmer, c'est aussi apprendre à penser de manière logique et structurée. Vous apprendrez à résoudre des problèmes en décomposant une grande tâche en petites étapes faciles à gérer. C'est une compétence précieuse, pas seulement en informatique, mais dans la vie quotidienne aussi !
+
+4. La Créativité dans la Programmation
+
+Même si la programmation semble technique, elle laisse une grande place à la créativité. Chaque programmeur a sa manière unique de résoudre des problèmes et de coder. C'est comme peindre ou composer une musique, mais avec des codes !
+
+5. Pourquoi Apprendre à Programmer ?
+
+Apprendre à programmer, c'est ouvrir une porte sur un monde de possibilités. Vous pouvez créer des jeux, des applications, ou même contrôler des robots. Et le mieux dans tout ça ? C'est super amusant !
+
+En résumé, programmer, c'est un peu comme apprendre une nouvelle langue, une langue qui vous permet de créer des choses incroyables avec l'ordinateur. Et avec Java, vous avez un des meilleurs outils pour commencer cette aventure. Alors, prêts à parler à votre ordinateur ?
