@@ -20,7 +20,9 @@ export class OpenaiService {
     model: string,
     n = 2,
   ): Promise<string[]> {
-    log.debug(`Generating questions for input: ${inputText}`);
+    log.debug(
+      `Generating questions for input: ${inputText.substring(0, 10)}...`,
+    );
     const response = await this.openai.completions.create({
       model,
       prompt: `
@@ -44,7 +46,9 @@ export class OpenaiService {
     model: string,
     n = 2,
   ): Promise<string[]> {
-    log.debug(`Generating good feedback for question: ${question}`);
+    log.debug(
+      `Generating good feedback for question: ${question.substring(0, 10)}...`,
+    );
     const response = await this.openai.completions.create({
       model,
       prompt: `
@@ -69,7 +73,9 @@ export class OpenaiService {
     model: string,
     n = 4,
   ): Promise<string[]> {
-    log.debug(`Generating bad feedback for question: ${question}`);
+    log.debug(
+      `Generating bad feedback for question: ${question.substring(0, 10)}...`,
+    );
     const response = await this.openai.completions.create({
       model,
       prompt: `
@@ -95,7 +101,12 @@ export class OpenaiService {
     answer: string,
     model: string,
   ): Promise<string> {
-    log.debug(`Generating feedback for question: ${question}`);
+    log.debug(
+      `Generating feedback for question: ${question.substring(
+        0,
+        10,
+      )}... and answer: ${answer.substring(0, 10)}...`,
+    );
     const response = await this.openai.completions.create({
       model,
       prompt: `
@@ -122,7 +133,7 @@ export class OpenaiService {
   }
 
   async generateName(question: string, model: string): Promise<string> {
-    log.debug(`Generating name for question: ${question}`);
+    log.debug(`Generating name for question: ${question.substring(0, 10)}...`);
     const response = await this.openai.completions.create({
       model,
       prompt: `
