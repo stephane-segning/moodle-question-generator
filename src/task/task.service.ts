@@ -1,10 +1,14 @@
 import { Command, CommandRunner, Option } from 'nest-commander';
 import { Logger } from '@nestjs/common';
 import * as fs from 'fs';
-import { XMLBuilder } from 'fast-xml-parser';
 import { QuestionService } from '../question/question.service';
+import { XmlService } from '../xml/xml.service';
+import { bindNodeCallback, map, switchMap, tap } from 'rxjs';
 
 const log = new Logger('TaskService');
+
+const readFileAsObservable = bindNodeCallback(fs.readFile);
+const writeFileAsObservable = bindNodeCallback(fs.writeFile);
 
 @Command({
   name: 'modq',
@@ -12,7 +16,10 @@ const log = new Logger('TaskService');
   options: { isDefault: true },
 })
 export class TaskService extends CommandRunner {
-  constructor(private readonly questionService: QuestionService) {
+  constructor(
+    private readonly questionService: QuestionService,
+    private readonly xmlService: XmlService,
+  ) {
     super();
   }
 
@@ -20,49 +27,40 @@ export class TaskService extends CommandRunner {
     [inputFile, outputFile]: string[],
     options: Record<'openaiKey' | 'model', string>,
   ): Promise<void> {
-    log.debug('Running task...');
-    const file = fs.readFileSync(inputFile, 'utf8');
-    const questionsResult = await this.questionService.generateQuestions(
-      file,
-      options.model,
-      options.openaiKey,
+    const currentDateTime = new Date().getTime();
+    log.log('Running task...');
+
+    const result = readFileAsObservable(inputFile).pipe(
+      switchMap((data) =>
+        this.questionService.generateQuestions(
+          data.toString('utf-8'),
+          options.model,
+          options.openaiKey,
+        ),
+      ),
+      tap((questionsResult) =>
+        log.debug(`Done with ${questionsResult.length} questions`),
+      ),
+      map((questionsResult) => this.xmlService.toXml(questionsResult)),
+      tap(() => log.debug(`Writing result to ${outputFile}`)),
+      switchMap((result) =>
+        writeFileAsObservable(
+          outputFile,
+          '<?xml version="1.0" encoding="UTF-8"?>' + result,
+        ),
+      ),
+      tap(() => {
+        const time = new Date().getTime() - currentDateTime;
+        log.log(`Task completed in ${time}ms`);
+      }),
     );
 
-    const builder = new XMLBuilder({
-      ignoreAttributes: false,
-      preserveOrder: true,
-      suppressBooleanAttributes: true,
-      attributeNamePrefix: '@_',
-    });
-
-    const result = builder.build({
-      quiz: {
-        question: questionsResult.map(
-          ({ question, answers, name, single }) => ({
-            '@_text': 'multichoice',
-            name: {
-              text: name,
-            },
-            questiontext: {
-              '@_format': 'html',
-              text: `<![CDATA[${question}]]>`,
-            },
-            answer: answers.map(({ answer, feedback, fraction }) => ({
-              text: `<![CDATA[${answer}]]>`,
-              fraction,
-              feedback: {
-                text: `<![CDATA[${feedback}]]>`,
-              },
-            })),
-            shuffleanswers: 1,
-            single,
-          }),
-        ),
+    result.subscribe({
+      error: (err) => {
+        log.error(err);
+        process.exit(1);
       },
     });
-
-    log.debug(`Writing result to ${outputFile}`);
-    fs.writeFileSync(outputFile, '<?xml version="1.0" ?>' + result);
   }
 
   @Option({
