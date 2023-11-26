@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import { QuestionService } from '../question/question.service';
 import { XmlService } from '../xml/xml.service';
 import { bindNodeCallback, map, switchMap, tap } from 'rxjs';
+import { v4 as uuid } from 'uuid';
 
 const log = new Logger('TaskService');
 
@@ -28,11 +29,13 @@ export class TaskService extends CommandRunner {
     options: Record<'openaiKey' | 'model', string>,
   ): Promise<void> {
     const currentDateTime = new Date().getTime();
-    log.log('Running task...');
+    const runId = uuid();
+    log.log(`Running task n° ${runId}.`);
 
     const result = readFileAsObservable(inputFile).pipe(
       switchMap((data) =>
         this.questionService.generateQuestions(
+          runId,
           data.toString('utf-8'),
           options.model,
           options.openaiKey,
@@ -49,13 +52,13 @@ export class TaskService extends CommandRunner {
           '<?xml version="1.0" encoding="UTF-8"?>' + result,
         ),
       ),
-      tap(() => {
-        const time = new Date().getTime() - currentDateTime;
-        log.log(`Task completed in ${time}ms`);
-      }),
     );
 
     result.subscribe({
+      next: () => {
+        const time = new Date().getTime() - currentDateTime;
+        log.log(`Task n° ${runId} completed in ${time}ms`);
+      },
       error: (err) => {
         log.error(err);
         process.exit(1);
