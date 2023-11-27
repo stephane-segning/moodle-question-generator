@@ -1,5 +1,5 @@
 import { Command, Option } from 'nest-commander';
-import { bufferCount, bufferTime, bufferWhen, concatMap, forkJoin, from, interval, switchMap, tap } from 'rxjs';
+import { forkJoin, switchMap, tap } from 'rxjs';
 import * as path from 'path';
 import { BaseService } from '../core/base.service';
 import { v4 as uuid } from 'uuid';
@@ -44,27 +44,22 @@ export class MultipleService extends BaseService {
 
     const result = this.initOpenAI(options.openaiKey).pipe(
       switchMap(() => parseCsv(inputCsvFile)),
-      tap((cts) => console.log(`Loaded ${cts.length} mappings`)),
+      tap((cts) => log.debug(`Loaded ${cts.length} mappings`)),
       switchMap((categories) =>
-        from(categories).pipe(
-          bufferWhen(() => interval(10_000)),
-          concatMap((group) =>
-            forkJoin(
-              group.map((data) => {
-                const outputFile = path.join(
-                  outputFolder,
-                  `${runId}--${data.exam}–––${data.category}–––${data.topic}.xml`,
-                );
-                log.log(`Generating questions for ${data.topic}`);
-                return this.doRun(
-                  template(data.exam, data.category, data.topic),
-                  options.model as string,
-                  options.max_gen as number,
-                  options.tags as string[],
-                ).pipe(toFile(outputFile));
-              }),
-            ),
-          ),
+        forkJoin(
+          categories.map((data) => {
+            const outputFile = path.join(
+              outputFolder,
+              `${runId}--${data.exam}–––${data.category}–––${data.topic}.xml`,
+            );
+            log.debug(`Generating questions for ${data.topic}`);
+            return this.doRun(
+              template(data.exam, data.category, data.topic),
+              options.model as string,
+              options.max_gen as number,
+              options.tags as string[],
+            ).pipe(toFile(outputFile));
+          }),
         ),
       ),
     );
@@ -75,7 +70,7 @@ export class MultipleService extends BaseService {
         log.log(`Task n° ${runId} completed in ${time / (1000 * 60)}m`);
       },
       error: (err) => {
-        console.error(err);
+        log.error(err);
         process.exit(1);
       },
     });
