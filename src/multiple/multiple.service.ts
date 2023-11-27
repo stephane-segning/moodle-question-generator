@@ -14,7 +14,7 @@ const template = (exam: string, category: string, topic: string) => `
 The LPIC-1 certification, which includes the LPIC-101 and LPIC-102 exams, covers a broad range of Linux system administration topics.
 Here's a breakdown of the key topics for each exam:
 
-Propose at least six questions about "${exam}" Exam in "${category}" domain on this topic "${topic}"
+Propose at least twenty-four questions about "${exam}" Exam in "${category}" domain on this topic "${topic}"
 `;
 
 const log = new Logger('MultipleService');
@@ -47,7 +47,7 @@ export class MultipleService extends BaseService {
       tap((cts) => console.log(`Loaded ${cts.length} mappings`)),
       switchMap((categories) =>
         from(categories).pipe(
-          bufferCount(10),
+          bufferCount(1),
           concatMap((group) =>
             forkJoin(
               group.map((data) => {

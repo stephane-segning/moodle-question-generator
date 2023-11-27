@@ -37,7 +37,7 @@ export class OpenaiService {
         {
           role: 'system',
           content: `
-          You are a helpful assistant. Your task is to generate multiple-choice questions (MCQs) based on the provided course content. Follow these guidelines:
+          You are a helpful assistant. Your task is to generate multiple-choice questions (MCQs) based on the provided topics. Follow these guidelines:
 
           - Format each question with a short title.
           - Provide 1 to 4 incorrect (bad) responses AND 1 to 2 correct (good) responses for each question.
@@ -76,7 +76,7 @@ export class OpenaiService {
                     "e": "Explanation for good response 2",
                     "t": 1
                   },
-                  ...continue this format up to 6 responses
+                  ...
                 ]
               },
               {
@@ -98,10 +98,10 @@ export class OpenaiService {
                     "e": "<div>Explanation for good response 2</div>",
                     "t": 1
                   },
-                  ...continue this format up to 6 responses
+                  ...
                 ]
               },
-              ...continue this format for other questions
+              ...
             ]
           - Ensure variety in topics and complexity.
           - Do not repeat any previous questions provided below, if any.
@@ -113,7 +113,7 @@ export class OpenaiService {
           content: `
           "${inputText}"
           
-          ${previousQuestions ?? 'Here are some previous questions:'}
+          ${previousQuestions ?? 'Here are previous questions:'}
           ${previousQuestions ?? ''}
           `,
         },

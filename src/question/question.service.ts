@@ -31,9 +31,18 @@ export class QuestionService {
             this.helper(runId, text, model, previousQuestions),
           ]);
         }),
-        map(([questions, newQuestions]) =>
-          uniqBy([...questions, ...newQuestions], 'question'),
-        ),
+        map(([questions, newQuestions]) => {
+          const tmp = [...questions, ...newQuestions];
+          const finalQuestions = uniqBy(tmp, 'question');
+          if (finalQuestions.length !== tmp.length) {
+            log.debug(
+              `Removed ${tmp.length - finalQuestions.length} duplicates over ${
+                tmp.length
+              } questions`,
+            );
+          }
+          return finalQuestions;
+        }),
       );
     }
     return next.pipe(toArray(), mergeAll());
@@ -64,7 +73,6 @@ export class QuestionService {
     model: string,
     previousQuestions?: string,
   ): Observable<Question[]> {
-    log.debug('Generating questions...');
     return fromPromise(
       this.openaiService.generateQuestions(
         runId,
