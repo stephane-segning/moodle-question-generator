@@ -1,63 +1,56 @@
-import { Command, CommandRunner, Option } from 'nest-commander';
+import { Command, Option } from 'nest-commander';
 import { Logger } from '@nestjs/common';
-import * as fs from 'fs';
+import { switchMap, tap } from 'rxjs';
+import { v4 as uuid } from 'uuid';
+import { BaseService } from '../core/base.service';
+import { readFileAsObservable, toFile } from '../share/file-utils';
 import { QuestionService } from '../question/question.service';
 import { XmlService } from '../xml/xml.service';
-import { bindNodeCallback, map, switchMap, tap } from 'rxjs';
-import { v4 as uuid } from 'uuid';
+import { OpenaiService } from '../openai/openai.service';
 
 const log = new Logger('TaskService');
-
-const readFileAsObservable = bindNodeCallback(fs.readFile);
-const writeFileAsObservable = bindNodeCallback(fs.writeFile);
 
 @Command({
   name: 'modq',
   arguments: '<input-file> <output-file>',
   options: { isDefault: true },
 })
-export class TaskService extends CommandRunner {
+export class TaskService extends BaseService {
   constructor(
-    private readonly questionService: QuestionService,
-    private readonly xmlService: XmlService,
+    questionService: QuestionService,
+    xmlService: XmlService,
+    openaiService: OpenaiService,
   ) {
-    super();
+    super(questionService, xmlService, openaiService);
   }
 
   async run(
     [inputFile, outputFile]: string[],
-    options: Record<'openaiKey' | 'model', string>,
+    options: Record<'openaiKey' | 'model' | 'max_gen', string | number>,
   ): Promise<void> {
     const currentDateTime = new Date().getTime();
     const runId = uuid();
     log.log(`Running task n° ${runId}.`);
 
-    const result = readFileAsObservable(inputFile).pipe(
+    const result = this.initOpenAI(options.openaiKey as string).pipe(
+      switchMap(() => readFileAsObservable(inputFile)),
       switchMap((data) =>
-        this.questionService.generateQuestions(
-          runId,
+        this.doRun(
           data.toString('utf-8'),
-          options.model,
-          options.openaiKey,
+          options.model as string,
+          options.max_gen as number,
         ),
       ),
       tap((questionsResult) =>
         log.debug(`Done with ${questionsResult.length} questions`),
       ),
-      map((questionsResult) => this.xmlService.toXml(questionsResult)),
-      tap(() => log.debug(`Writing result to ${outputFile}`)),
-      switchMap((result) =>
-        writeFileAsObservable(
-          outputFile,
-          '<?xml version="1.0" encoding="UTF-8"?>' + result,
-        ),
-      ),
+      toFile(outputFile),
     );
 
     result.subscribe({
       next: () => {
         const time = new Date().getTime() - currentDateTime;
-        log.log(`Task n° ${runId} completed in ${time}ms`);
+        log.log(`Task n° ${runId} completed in ${time / (1000 * 60)}m`);
       },
       error: (err) => {
         log.error(err);
@@ -81,11 +74,20 @@ export class TaskService extends CommandRunner {
   @Option({
     flags: '-m, --model <key>',
     description: 'The OpenAI API key to use',
-    required: false,
-    defaultValue: 'gpt-3.5-turbo',
+    required: true,
   })
   parseOpenAiModel(val: string) {
     log.debug(`OpenAI model: ${val}`);
     return val;
+  }
+
+  @Option({
+    flags: '-g, --max_gen <value>',
+    description: 'The max number of generations to run',
+    required: true,
+  })
+  parseMaxGen(val: string) {
+    log.debug(`max_gen: ${val}`);
+    return Number(val);
   }
 }

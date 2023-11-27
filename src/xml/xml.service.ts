@@ -14,12 +14,12 @@ export class XmlService {
 
   constructor() {}
 
-  public toXml(questions: Question[]): string {
+  public toXml(questions: Question[], tags?: string[]): string {
     log.debug('Generating XML...');
     return this.builder.build({
       quiz: {
         question: questions.map(({ question, answers, name, single }) => ({
-          '@_text': 'multichoice',
+          '@_type': 'multichoice',
           name: {
             text: name,
           },
@@ -42,6 +42,14 @@ export class XmlService {
               },
             },
           })),
+          tags:
+            tags.length === 0
+              ? undefined
+              : {
+                  tag: tags.map((tag) => ({
+                    text: tag,
+                  })),
+                },
           shuffleanswers: true,
           single,
           answernumbering: 'abc',

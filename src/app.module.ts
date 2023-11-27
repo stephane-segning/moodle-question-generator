@@ -5,6 +5,7 @@ import { QuestionService } from './question/question.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { XmlService } from './xml/xml.service';
 import { CacheModule } from '@nestjs/cache-manager';
+import { MultipleService } from './multiple/multiple.service';
 import * as redisStore from 'cache-manager-redis-store';
 
 @Module({
@@ -20,6 +21,12 @@ import * as redisStore from 'cache-manager-redis-store';
       }),
     }),
   ],
-  providers: [TaskService, OpenaiService, QuestionService, XmlService],
+  providers: [
+    TaskService,
+    OpenaiService,
+    QuestionService,
+    XmlService,
+    MultipleService,
+  ],
 })
 export class AppModule {}
