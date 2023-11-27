@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OpenaiService } from '../openai/openai.service';
 import { fromPromise } from 'rxjs/internal/observable/innerFrom';
-import { map, mergeAll, Observable, of, switchMap, toArray, zip } from 'rxjs';
+import { concatMap, forkJoin, map, Observable, of, switchMap, zip } from 'rxjs';
 import { Question } from '../models/question';
 import { uniqBy } from 'lodash';
 import { GeneratedQuestion } from '../models/generated-question';
@@ -22,9 +22,9 @@ export class QuestionService {
     let next = this.helper(runId, text, model);
     for (let i = 0; i < maxGen; i++) {
       next = next.pipe(
-        switchMap((questions) => {
+        concatMap((questions) => {
           const previousQuestions = questions
-            .map((question) => `-- "${question.question}"`)
+            .map((question) => `- "${question.question}"`)
             .join('\n');
           return zip([
             of(questions),
@@ -45,11 +45,11 @@ export class QuestionService {
         }),
       );
     }
-    return next.pipe(toArray(), mergeAll());
+    return next;
   }
 
   private parseToQuestion(question: GeneratedQuestion): Question {
-    const goodResponses = question.r.filter((a) => a.t === 1);
+    const goodResponses = question.r.filter((a) => Number(a.t) === 1);
     return {
       name: question.n,
       question: question.n,
@@ -80,6 +80,27 @@ export class QuestionService {
         model,
         previousQuestions,
       ),
-    ).pipe(map((questions) => questions.map((q) => this.parseToQuestion(q))));
+    ).pipe(
+      switchMap((questions) =>
+        forkJoin(questions.map((q) => this.getResponses(runId, q, model))),
+      ),
+    );
+  }
+
+  private getResponses(
+    runId: string,
+    question: string,
+    model: string,
+  ): Observable<Question> {
+    return of(question).pipe(
+      concatMap((question) =>
+        fromPromise(
+          this.openaiService.generateResponses(runId, question, model),
+        ),
+      ),
+      map((responses) =>
+        this.parseToQuestion({ n: question, r: uniqBy(responses, 'n') }),
+      ),
+    );
   }
 }

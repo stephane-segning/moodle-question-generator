@@ -18,60 +18,62 @@ export class XmlService {
     log.debug('Generating XML...');
     return this.builder.build({
       quiz: {
-        question: questions.map(({ question, answers, name, single }) => ({
-          '@_type': 'multichoice',
-          name: {
-            text: name,
-          },
-          questiontext: {
-            '@_format': 'html',
-            text: {
-              cdata: question,
+        question: questions
+          .filter((q) => q.answers.length > 1)
+          .map(({ question, answers, name, single }) => ({
+            '@_type': 'multichoice',
+            name: {
+              text: name,
             },
-          },
-          answer: answers.map(({ answer, feedback, fraction }) => ({
-            '@_format': 'html',
-            '@_fraction': fraction,
-            text: {
-              cdata: answer,
-            },
-            feedback: {
+            questiontext: {
               '@_format': 'html',
               text: {
-                cdata: feedback,
+                cdata: question,
+              },
+            },
+            answer: answers.map(({ answer, feedback, fraction }) => ({
+              '@_format': 'html',
+              '@_fraction': fraction,
+              text: {
+                cdata: answer,
+              },
+              feedback: {
+                '@_format': 'html',
+                text: {
+                  cdata: feedback,
+                },
+              },
+            })),
+            tags:
+              tags.length === 0
+                ? undefined
+                : {
+                    tag: tags.map((tag) => ({
+                      text: tag,
+                    })),
+                  },
+            shuffleanswers: true,
+            single,
+            answernumbering: 'abc',
+            correctfeedback: {
+              '@_format': 'html',
+              text: {
+                cdata: 'Your answer is correct.',
+              },
+            },
+            partiallycorrectfeedback: {
+              '@_format': 'html',
+              text: {
+                cdata: 'Your answer is partially correct.',
+              },
+            },
+            incorrectfeedback: {
+              '@_format': 'html',
+              text: {
+                cdata: 'Your answer is incorrect.',
               },
             },
           })),
-          tags:
-            tags.length === 0
-              ? undefined
-              : {
-                  tag: tags.map((tag) => ({
-                    text: tag,
-                  })),
-                },
-          shuffleanswers: true,
-          single,
-          answernumbering: 'abc',
-          correctfeedback: {
-            '@_format': 'html',
-            text: {
-              cdata: 'Your answer is correct.',
-            },
-          },
-          partiallycorrectfeedback: {
-            '@_format': 'html',
-            text: {
-              cdata: 'Your answer is partially correct.',
-            },
-          },
-          incorrectfeedback: {
-            '@_format': 'html',
-            text: {
-              cdata: 'Your answer is incorrect.',
-            },
-          },
-        })),
       },
     });
   }

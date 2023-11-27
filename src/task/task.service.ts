@@ -1,6 +1,6 @@
 import { Command, Option } from 'nest-commander';
 import { Logger } from '@nestjs/common';
-import { switchMap, tap } from 'rxjs';
+import { concatMap, switchMap, tap } from 'rxjs';
 import { v4 as uuid } from 'uuid';
 import { BaseService } from '../core/base.service';
 import { readFileAsObservable, toFile } from '../share/file-utils';
@@ -34,7 +34,7 @@ export class TaskService extends BaseService {
 
     const result = this.initOpenAI(options.openaiKey as string).pipe(
       switchMap(() => readFileAsObservable(inputFile)),
-      switchMap((data) =>
+      concatMap((data) =>
         this.doRun(
           data.toString('utf-8'),
           options.model as string,

@@ -1,11 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import OpenAIApi from 'openai';
-import { CacheKey } from '@nestjs/cache-manager';
 import * as fs from 'fs';
 import * as process from 'process';
 import * as path from 'path';
-import { GeneratedQuestion } from '../models/generated-question';
+import { GeneratedResponse } from '../models/generated-question';
 import { ensureDir } from '../share/file-utils';
+import { v4 as uuid } from 'uuid';
 
 const log = new Logger('OpenaiService');
 
@@ -21,13 +21,12 @@ export class OpenaiService {
     log.debug('Initialized OpenAI API');
   }
 
-  @CacheKey('generate_questions')
   async generateQuestions(
     runId: string,
     inputText: string,
     model: string,
     previousQuestions?: string,
-  ): Promise<GeneratedQuestion[]> {
+  ): Promise<string[]> {
     log.debug(
       `Generating questions for input: ${inputText.substring(0, 10)}...`,
     );
@@ -37,70 +36,15 @@ export class OpenaiService {
         {
           role: 'system',
           content: `
-          You are a helpful assistant. Your task is to generate multiple-choice questions (MCQs) based on the provided topics. Follow these guidelines:
+          You are a helpful assistant. Your task is to generate questions based on the provided topics. Follow these guidelines:
 
-          - Format each question with a short title.
-          - Provide 1 to 4 incorrect (bad) responses AND 1 to 2 correct (good) responses for each question.
-          - Include a brief explanation for each response.
-          - Use HTML format for questions and responses.
+          - Use HTML format for questions.
           - Escape backslashes as "\\\\".
           - Escape quotes as "\"".
           - Output the questions in JSON format, following the provided structure:
             [
-              {
-                "t": "Question simple title
-                "n": "Full question in HTML format",
-                "r": [
-                  {
-                    "n": "Bad <span class='active'>response</span> 1",
-                    "e": "Explanation for bad response 1",
-                    "t": 0
-                  },
-                  {
-                    "n": "Bad response 2",
-                    "e": "Explanation for bad response 2",
-                    "t": 0
-                  },
-                  {
-                    "n": "Good response 1",
-                    "e": "Explanation for good response 1",
-                    "t": 1
-                  },
-                  {
-                    "n": "Bad response 3",
-                    "e": "Explanation for bad response 3",
-                    "t": 0
-                  },
-                  {
-                    "n": "Good response 2",
-                    "e": "Explanation for good response 2",
-                    "t": 1
-                  },
-                  ...
-                ]
-              },
-              {
-                "t": "Some second question simple title",
-                "n": "This is <b>some second</b> question. Why is it so difficult?",
-                "r": [
-                  {
-                    "n": "Bad response 1",
-                    "e": "Explanation for bad response 1",
-                    "t": 0
-                  },
-                  {
-                    "n": "Bad response 2",
-                    "e": "<body>Explanation for bad response 2</body>",
-                    "t": 0
-                  },
-                  {
-                    "n": "Good response 1",
-                    "e": "<div>Explanation for good response 2</div>",
-                    "t": 1
-                  },
-                  ...
-                ]
-              },
+              "Question <b>simple</b> title",
+              "<span>Some second question</span> simple title",
               ...
             ]
           - Ensure variety in topics and complexity.
@@ -118,18 +62,18 @@ export class OpenaiService {
           `,
         },
       ],
-      temperature: 0.8,
+      temperature: 0.7,
     });
 
     const res = response.choices
       .map(({ message }, i) => {
         const data = message.content.trim();
-        const fileName = `output/${runId}-${
-          previousQuestions?.length ?? '_'
-        }-${i}.json`;
         try {
-          return JSON.parse(data) as GeneratedQuestion[];
+          return JSON.parse(data) as string[];
         } catch (e) {
+          const fileName = `output/${runId}-${
+            previousQuestions?.length ?? '_'
+          }-${i}.json`;
           this.saveToFile(data, fileName);
           log.error(fileName, e);
           return [];
@@ -137,6 +81,101 @@ export class OpenaiService {
       })
       .flat();
     log.debug(`Generated questions: ${res.length}`);
+    return res;
+  }
+
+  async generateResponses(
+    runId: string,
+    question: string,
+    model: string,
+  ): Promise<GeneratedResponse[]> {
+    log.debug(
+      `Generating responses for question: ${question.substring(0, 30)}...`,
+    );
+    const response = await this.openai.chat.completions.create({
+      model,
+      messages: [
+        {
+          role: 'system',
+          content: `
+          You are a helpful assistant. Your task is to generate responses on computer science based questions. Follow these guidelines:
+
+          - Provide at least three incorrect responses. 
+          - Provide at least one correct responses.
+          - Include a explanation for each response.
+          - Format each response with a short title.
+          - Format each response with a detailed explanation.
+          - Use HTML format for response and explanation.
+          - Escape backslashes as "\\\\".
+          - Escape quotes as "\"".
+          - Return only a complete JSON so that the user can parse it.
+          - Use t = 1 for good responses and t = 0 for bad responses. 
+          - Output the questions in JSON format, following the provided structure:
+            [
+              {
+                "n": "Bad <span class='active'>response</span> 1",
+                "e": "Explanation for bad response 1",
+                "t": "0"
+              },
+              {
+                "n": "Bad response 2",
+                "e": "<p>Explanation</p> for bad response 2",
+                "t": "0"
+              },
+              {
+                "n": "<pre><code>Good response 1</code></pre>",
+                "e": "Explanation for good response 1",
+                "t": "1"
+              },
+              {
+                "n": "Bad response 3",
+                "e": "<section>Explanation for bad response 3</section>",
+                "t": "0"
+              },
+              {
+                "n": "Good response 2",
+                "e": "<div>Explanation</div> for <p>good</p> response 2",
+                "t": "1"
+              },
+              ...
+            ]
+          `,
+        },
+        {
+          role: 'user',
+          content: `
+          The LPIC-1 certification, which includes the LPIC-101 and LPIC-102 exams, covers a broad range of Linux system administration topics.
+          Here's a breakdown of the key topics for each exam:
+        
+          Propose a question about LPIC Exam
+          `,
+        },
+        {
+          role: 'assistant',
+          content: `Here are some questions for the LPIC Exam: "${question}"`,
+        },
+        {
+          role: 'user',
+          content: `Please generate at least four responses for this question: "${question}"`,
+        },
+      ],
+      temperature: 0.7,
+    });
+
+    const res = response.choices
+      .map(({ message }, i) => {
+        const data = message.content.trim();
+        try {
+          return JSON.parse(data) as GeneratedResponse[];
+        } catch (e) {
+          const fileName = `output/${runId}-res-${uuid()}-${i}.json`;
+          this.saveToFile(data, fileName);
+          log.error(fileName, e);
+          return [];
+        }
+      })
+      .flat();
+    log.debug(`Generated responses: ${res.length}`);
     return res;
   }
 

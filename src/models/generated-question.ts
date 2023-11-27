@@ -6,5 +6,5 @@ export interface GeneratedQuestion {
 export interface GeneratedResponse {
   n: string;
   e: string;
-  t: number;
+  t: string;
 }

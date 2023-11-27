@@ -1,5 +1,5 @@
 import { Command, Option } from 'nest-commander';
-import { bufferCount, concatMap, forkJoin, from, switchMap, tap } from 'rxjs';
+import { bufferCount, bufferTime, bufferWhen, concatMap, forkJoin, from, interval, switchMap, tap } from 'rxjs';
 import * as path from 'path';
 import { BaseService } from '../core/base.service';
 import { v4 as uuid } from 'uuid';
@@ -14,7 +14,7 @@ const template = (exam: string, category: string, topic: string) => `
 The LPIC-1 certification, which includes the LPIC-101 and LPIC-102 exams, covers a broad range of Linux system administration topics.
 Here's a breakdown of the key topics for each exam:
 
-Propose at least twenty-four questions about "${exam}" Exam in "${category}" domain on this topic "${topic}"
+Propose at least twenty questions about "${exam}" Exam in "${category}" domain on this topic "${topic}"
 `;
 
 const log = new Logger('MultipleService');
@@ -42,12 +42,12 @@ export class MultipleService extends BaseService {
     const currentDateTime = new Date().getTime();
     const runId = uuid();
 
-    const result = this.initOpenAI(options.openaiKey as string).pipe(
+    const result = this.initOpenAI(options.openaiKey).pipe(
       switchMap(() => parseCsv(inputCsvFile)),
       tap((cts) => console.log(`Loaded ${cts.length} mappings`)),
       switchMap((categories) =>
         from(categories).pipe(
-          bufferCount(1),
+          bufferWhen(() => interval(10_000)),
           concatMap((group) =>
             forkJoin(
               group.map((data) => {
