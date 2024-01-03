@@ -1,4 +1,4 @@
-import { bindNodeCallback, switchMap } from 'rxjs';
+import { bindNodeCallback, map, switchMap } from 'rxjs';
 import { CategoryTopic } from '../models/category-topic';
 import * as fs from 'fs';
 import * as csv from 'csv-parser';
@@ -6,11 +6,11 @@ import * as csv from 'csv-parser';
 const writeFileAsObservable = bindNodeCallback(fs.writeFile);
 
 export const toFile = (outputFile: string) =>
-  switchMap((result: string) =>
+  switchMap(([result, runId]: [string, string]) =>
     writeFileAsObservable(
       outputFile,
       '<?xml version="1.0" encoding="UTF-8"?>' + result,
-    ),
+    ).pipe(map(() => runId)),
   );
 
 export const ensureDir = (dir: string) => {

@@ -1,10 +1,20 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OpenaiService } from '../openai/openai.service';
 import { fromPromise } from 'rxjs/internal/observable/innerFrom';
-import { concatMap, forkJoin, map, Observable, of, switchMap, zip } from 'rxjs';
+import {
+  concatMap,
+  delay,
+  forkJoin,
+  map,
+  Observable,
+  of,
+  switchMap,
+  zip,
+} from 'rxjs';
 import { Question } from '../models/question';
 import { uniqBy } from 'lodash';
 import { GeneratedQuestion } from '../models/generated-question';
+import { qtDelay } from '../share/delays';
 
 const log = new Logger('QuestionService');
 
@@ -82,7 +92,14 @@ export class QuestionService {
       ),
     ).pipe(
       switchMap((questions) =>
-        forkJoin(questions.map((q) => this.getResponses(runId, q, model))),
+        forkJoin(
+          questions.map((q, idx) =>
+            of(q).pipe(
+              delay(idx * qtDelay),
+              switchMap((q) => this.getResponses(runId, q, model)),
+            ),
+          ),
+        ),
       ),
     );
   }

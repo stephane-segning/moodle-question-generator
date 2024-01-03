@@ -32,6 +32,9 @@ dependencies:
   fast-xml-parser:
     specifier: ^4.3.2
     version: 4.3.2
+  jsonrepair:
+    specifier: ^3.5.0
+    version: 3.5.0
   lodash:
     specifier: ^4.17.21
     version: 4.17.21
@@ -4022,6 +4025,11 @@ packages:
     optionalDependencies:
       graceful-fs: 4.2.11
     dev: true
+
+  /jsonrepair@3.5.0:
+    resolution: {integrity: sha512-SavvDsUP9Xnqo2MoC6Wl6zNyX3f+I5199hRbXBtAITyP2NTPyAgyx5xM0bgcIljRjzsIvOBANbgfWe8XXlyeLA==}
+    hasBin: true
+    dev: false
 
   /keyv@4.5.4:
     resolution: {integrity: sha512-oxVHkHR/EJf2CNXnWxRLW6mg7JyCCUcG0DtEGmL2ctUo1PNTin1PUil+r/+4r5MpVgC/fn1kjsx7mjSujKqIpw==}

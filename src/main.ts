@@ -1,9 +1,13 @@
 import { AppModule } from './app.module';
 import { CommandFactory } from 'nest-commander';
-import { Logger } from '@nestjs/common';
 
 async function bootstrap() {
-  await CommandFactory.run(AppModule, new Logger());
+  const isProd = process.env.NODE_ENV === 'production';
+  await CommandFactory.run(AppModule, {
+    logger: isProd
+      ? ['warn', 'error']
+      : ['log', 'warn', 'error', 'debug', 'verbose'],
+  });
 }
 
 bootstrap();

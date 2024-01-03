@@ -6,6 +6,7 @@ import * as path from 'path';
 import { GeneratedResponse } from '../models/generated-question';
 import { ensureDir } from '../share/file-utils';
 import { v4 as uuid } from 'uuid';
+import { parseDataToJson } from '../share/json-utils';
 
 const log = new Logger('OpenaiService');
 
@@ -27,9 +28,7 @@ export class OpenaiService {
     model: string,
     previousQuestions?: string,
   ): Promise<string[]> {
-    log.debug(
-      `Generating questions for input: ${inputText.substring(0, 10)}...`,
-    );
+    log.debug(`Now some questions input: ${inputText.substring(0, 10)}...`);
     const response = await this.openai.chat.completions.create({
       model,
       messages: [
@@ -107,7 +106,7 @@ export class OpenaiService {
           - Format each response with a detailed explanation.
           - Use HTML format for response and explanation.
           - Escape backslashes as "\\\\".
-          - Escape quotes as "\"".
+          - Escape quotes (") as "\"".
           - Return only a complete JSON so that the user can parse it.
           - Use t = 1 for good responses and t = 0 for bad responses. 
           - Output the questions in JSON format, following the provided structure:
@@ -152,7 +151,7 @@ export class OpenaiService {
         },
         {
           role: 'assistant',
-          content: `Here are some questions for the LPIC Exam: "${question}"`,
+          content: `Here is a question for the LPIC Exam: "${question}"`,
         },
         {
           role: 'user',
@@ -166,7 +165,7 @@ export class OpenaiService {
       .map(({ message }, i) => {
         const data = message.content.trim();
         try {
-          return JSON.parse(data) as GeneratedResponse[];
+          return parseDataToJson<GeneratedResponse[]>(data);
         } catch (e) {
           const fileName = `output/${runId}-res-${uuid()}-${i}.json`;
           this.saveToFile(data, fileName);

@@ -1,5 +1,5 @@
 import { Command, Option } from 'nest-commander';
-import { forkJoin, switchMap, tap } from 'rxjs';
+import { delay, forkJoin, of, switchMap, tap } from 'rxjs';
 import * as path from 'path';
 import { BaseService } from '../core/base.service';
 import { v4 as uuid } from 'uuid';
@@ -9,6 +9,7 @@ import { QuestionService } from '../question/question.service';
 import { XmlService } from '../xml/xml.service';
 import { OpenaiService } from '../openai/openai.service';
 import { MultipleOptions } from '../models/multiple';
+import { ctDelay } from '../share/delays';
 
 const template = (exam: string, category: string, topic: string) => `
 The LPIC-1 certification, which includes the LPIC-101 and LPIC-102 exams, covers a broad range of Linux system administration topics.
@@ -39,7 +40,6 @@ export class MultipleService extends BaseService {
   ): Promise<void> {
     ensureDir(outputFolder);
 
-    const currentDateTime = new Date().getTime();
     const runId = uuid();
 
     const result = this.initOpenAI(options.openaiKey).pipe(
@@ -47,18 +47,23 @@ export class MultipleService extends BaseService {
       tap((cts) => log.debug(`Loaded ${cts.length} mappings`)),
       switchMap((categories) =>
         forkJoin(
-          categories.map((data) => {
+          categories.map((data, idx) => {
             const outputFile = path.join(
               outputFolder,
-              `${runId}--${data.exam}–––${data.category}–––${data.topic}.xml`,
+              `${data.category}–––${data.topic}---${data.exam}---${runId}.xml`,
             );
-            log.debug(`Generating questions for ${data.topic}`);
-            return this.doRun(
-              template(data.exam, data.category, data.topic),
-              options.model as string,
-              options.max_gen as number,
-              options.tags as string[],
-            ).pipe(toFile(outputFile));
+            return of(data).pipe(
+              delay(idx * ctDelay),
+              tap(() => log.debug(`Generating questions for ${data.topic}`)),
+              switchMap(() =>
+                this.doRun(
+                  template(data.exam, data.category, data.topic),
+                  options.model as string,
+                  options.max_gen as number,
+                  options.tags as string[],
+                ).pipe(toFile(outputFile)),
+              ),
+            );
           }),
         ),
       ),
@@ -66,8 +71,7 @@ export class MultipleService extends BaseService {
 
     result.subscribe({
       next: () => {
-        const time = new Date().getTime() - currentDateTime;
-        log.log(`Task n° ${runId} completed in ${time / (1000 * 60)}m`);
+        log.log(`[${runId}] All's done without errors!`);
       },
       error: (err) => {
         log.error(err);

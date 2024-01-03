@@ -1,5 +1,5 @@
 import { v4 as uuid } from 'uuid';
-import { map, Observable, tap } from 'rxjs';
+import { map, Observable, of, tap, zip } from 'rxjs';
 import { Logger } from '@nestjs/common';
 import { CommandRunner } from 'nest-commander';
 import { QuestionService } from '../question/question.service';
@@ -27,17 +27,23 @@ export abstract class BaseService extends CommandRunner {
     model: string,
     max_gen: number,
     tags: string[] = [],
-  ): Observable<string> {
+  ): Observable<[string, string]> {
+    const currentDateTime = new Date().getTime();
     const runId = uuid();
     log.log(`Running task n° ${runId}.`);
 
-    return this.questionService
+    const result = this.questionService
       .generateQuestions(runId, input, model, max_gen)
       .pipe(
         tap((questionsResult) =>
           log.debug(`Done with ${questionsResult.length} questions`),
         ),
         map((questionsResult) => this.xmlService.toXml(questionsResult, tags)),
+        tap(() => {
+          const time = new Date().getTime() - currentDateTime;
+          log.log(`Task n° ${runId} completed in ${time / (1000 * 60)}m`);
+        }),
       );
+    return zip(result, of(runId));
   }
 }
