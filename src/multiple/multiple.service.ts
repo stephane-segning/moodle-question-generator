@@ -12,10 +12,7 @@ import { MultipleOptions } from '../models/multiple';
 import { ctDelay } from '../share/delays';
 
 const template = (exam: string, category: string, topic: string) => `
-The LPIC-1 certification, which includes the LPIC-101 and LPIC-102 exams, covers a broad range of Linux system administration topics.
-Here's a breakdown of the key topics for each exam:
-
-Propose at least twenty questions about "${exam}" Exam in "${category}" domain on this topic "${topic}"
+Propose at least twenty questions relevant for the "${exam}" Exam in the field "${category}" on this topic "${topic}"
 `;
 
 const log = new Logger('MultipleService');

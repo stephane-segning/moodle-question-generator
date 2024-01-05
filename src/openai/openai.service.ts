@@ -100,7 +100,7 @@ export class OpenaiService {
           You are a helpful assistant. Your task is to generate responses on computer science based questions. Follow these guidelines:
 
           - Provide at least three incorrect responses. 
-          - Provide at least one correct responses.
+          - Provide exactly one correct responses.
           - Include a explanation for each response.
           - Format each response with a short title.
           - Format each response with a detailed explanation.
@@ -108,7 +108,7 @@ export class OpenaiService {
           - Escape backslashes as "\\\\".
           - Escape quotes (") as "\"".
           - Return only a complete JSON so that the user can parse it.
-          - Use t = 1 for good responses and t = 0 for bad responses. 
+          - Use the attribute "t" with value "1" for good responses and "0" for bad responses. 
           - Output the questions in JSON format, following the provided structure:
             [
               {

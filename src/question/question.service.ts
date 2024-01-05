@@ -63,17 +63,15 @@ export class QuestionService {
     return {
       name: question.n,
       question: question.n,
-      single: false,
-      answers: question.r.map((answer) => {
-        return {
-          answer: answer.n,
-          feedback: answer.e,
-          fraction:
-            goodResponses.length > 0
-              ? (Number(answer.t) * 100) / goodResponses.length
-              : 0,
-        };
-      }),
+      single: goodResponses.length === 1,
+      answers: question.r.map((answer) => ({
+        answer: answer.n,
+        feedback: answer.e,
+        fraction:
+          goodResponses.length > 0
+            ? (Number(answer.t) * 100) / goodResponses.length
+            : 0,
+      })),
     };
   }
 
