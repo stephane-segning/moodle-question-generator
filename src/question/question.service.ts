@@ -13,7 +13,10 @@ import {
 } from 'rxjs';
 import { Question } from '../models/question';
 import { uniqBy } from 'lodash';
-import { GeneratedQuestion } from '../models/generated-question';
+import {
+  GeneratedQuestion,
+  GeneratedResponse,
+} from '../models/generated-question';
 import { qtDelay } from '../share/delays';
 
 const log = new Logger('QuestionService');
@@ -58,7 +61,9 @@ export class QuestionService {
     return next;
   }
 
-  private parseToQuestion(question: GeneratedQuestion): Question {
+  private async parseToQuestion(
+    question: GeneratedQuestion,
+  ): Promise<Question> {
     const goodResponses = question.r.filter((a) => Number(a.t) === 1);
     return {
       name: question.n,
@@ -69,8 +74,10 @@ export class QuestionService {
         feedback: answer.e,
         fraction:
           goodResponses.length > 0
-            ? (Number(answer.t) * 100) / goodResponses.length
-            : 0,
+            ? answer.t === '1'
+              ? 100 / goodResponses.length
+              : 0
+            : -100,
       })),
     };
   }
@@ -79,26 +86,27 @@ export class QuestionService {
     runId: string,
     text: string,
     model: string,
-    previousQuestions?: string,
+    pQuestions?: string,
   ): Observable<Question[]> {
     return fromPromise(
-      this.openaiService.generateQuestions(
-        runId,
-        text,
-        model,
-        previousQuestions,
-      ),
+      this.openaiService.generateQuestions(runId, text, model, pQuestions),
     ).pipe(
       switchMap((questions) =>
         forkJoin(
           questions.map((q, idx) =>
             of(q).pipe(
               delay(idx * qtDelay),
-              switchMap((q) => this.getResponses(runId, q, model)),
+              map((q) => [q, !(pQuestions && pQuestions.includes(q))]),
+              switchMap(([q, notSkip]) =>
+                notSkip
+                  ? this.getResponses(runId, q as string, model)
+                  : of(undefined),
+              ),
             ),
           ),
         ),
       ),
+      map((questions) => questions.filter((q) => !!q)),
     );
   }
 
@@ -110,11 +118,23 @@ export class QuestionService {
     return of(question).pipe(
       concatMap((question) =>
         fromPromise(
-          this.openaiService.generateResponses(runId, question, model),
+          Promise.all([
+            this.openaiService.generateBadResponses(runId, question, model),
+            this.openaiService.generatePositiveAnswer(runId, question, model),
+          ]),
         ),
       ),
-      map((responses) =>
-        this.parseToQuestion({ n: question, r: uniqBy(responses, 'n') }),
+      switchMap(([wrongs, goods]) =>
+        this.parseToQuestion({
+          n: question,
+          r: uniqBy(
+            [
+              ...wrongs.map((g) => ({ ...g, t: '0' })),
+              ...goods.map((g) => ({ ...g, t: '1' })),
+            ] as GeneratedResponse[],
+            'n',
+          ),
+        }),
       ),
     );
   }

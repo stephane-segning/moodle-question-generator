@@ -28,7 +28,7 @@ export class OpenaiService {
     model: string,
     previousQuestions?: string,
   ): Promise<string[]> {
-    log.debug(`Now some questions input: ${inputText.substring(0, 10)}...`);
+    log.debug(`Now some questions input: ${inputText.substring(0, 100)}...`);
     const response = await this.openai.chat.completions.create({
       model,
       messages: [
@@ -38,7 +38,8 @@ export class OpenaiService {
           You are a helpful assistant. Your task is to generate questions based on the provided topics. Follow these guidelines:
 
           - Use HTML format for questions.
-          - Escape backslashes as "\\\\".
+          - Provide questions that can have a single answer.
+          - Escape backslash (\) as "\\".
           - Escape quotes as "\"".
           - Output the questions in JSON format, following the provided structure:
             [
@@ -56,8 +57,9 @@ export class OpenaiService {
           content: `
           "${inputText}"
           
-          ${previousQuestions ?? 'Here are previous questions:'}
+          ${previousQuestions ? 'PS: Here are previous questions:\n' : ''}
           ${previousQuestions ?? ''}
+          ${previousQuestions ? '\nSkip them!' : ''}
           `,
         },
       ],
@@ -68,9 +70,9 @@ export class OpenaiService {
       .map(({ message }, i) => {
         const data = message.content.trim();
         try {
-          return JSON.parse(data) as string[];
+          return parseDataToJson<string[]>(data);
         } catch (e) {
-          const fileName = `output/${runId}-${
+          const fileName = `output/question-${runId}-${
             previousQuestions?.length ?? '_'
           }-${i}.json`;
           this.saveToFile(data, fileName);
@@ -83,13 +85,16 @@ export class OpenaiService {
     return res;
   }
 
-  async generateResponses(
+  async generateBadResponses(
     runId: string,
     question: string,
     model: string,
   ): Promise<GeneratedResponse[]> {
     log.debug(
-      `Generating responses for question: ${question.substring(0, 30)}...`,
+      `Generating wrong responses for question: ${question.substring(
+        0,
+        100,
+      )}...`,
     );
     const response = await this.openai.chat.completions.create({
       model,
@@ -97,44 +102,33 @@ export class OpenaiService {
         {
           role: 'system',
           content: `
-          You are a helpful assistant. Your task is to generate responses on computer science based questions. Follow these guidelines:
+          You are a helpful assistant. Your task is to generate only wrong or misleading responses on computer science based questions for a quizz.
+          User would be shown the text, and after correction, the explanation. 
+          
+          Follow these guidelines:
 
-          - Provide at least three incorrect responses. 
-          - Provide exactly one correct responses.
-          - Include a explanation for each response.
-          - Format each response with a short title.
-          - Format each response with a detailed explanation.
-          - Use HTML format for response and explanation.
-          - Escape backslashes as "\\\\".
-          - Escape quotes (") as "\"".
-          - Return only a complete JSON so that the user can parse it.
-          - Use the attribute "t" with value "1" for good responses and "0" for bad responses. 
-          - Output the questions in JSON format, following the provided structure:
+          - Provide four incorrect responses. 
+          - Format each response with a simple, short, distinct but wrong, misleading or incorrect text.
+          - Format each response with a detailed explanation about why it's wrong, incorrect or misleading – one or two sentences should be enough.
+          - Use HTML format for answer and explanation.
+          - Escape special characters.
+          - Return only a complete and parsable JSON, representing an array of objects, so that the user can parse it.
+          - For each object:
+            - The attribute "n" is the answer.
+            - The attribute "e" is the explanation of the answer.
+          - Output the answers in JSON format, following the provided structure:
             [
               {
-                "n": "Bad <span class='active'>response</span> 1",
-                "e": "Explanation for bad response 1",
-                "t": "0"
+                "n": "Bad <span class='active'>answer</span> 1",
+                "e": "Explanation for bad answer 1"
               },
               {
-                "n": "Bad response 2",
-                "e": "<p>Explanation</p> for bad response 2",
-                "t": "0"
+                "n": "Bad answer 2",
+                "e": "<p>Explanation</p> for bad answer 2"
               },
               {
-                "n": "<pre><code>Good response 1</code></pre>",
-                "e": "Explanation for good response 1",
-                "t": "1"
-              },
-              {
-                "n": "Bad response 3",
-                "e": "<section>Explanation for bad response 3</section>",
-                "t": "0"
-              },
-              {
-                "n": "Good response 2",
-                "e": "<div>Explanation</div> for <p>good</p> response 2",
-                "t": "1"
+                "n": "<pre>Wrong answer 3</pre>",
+                "e": "<div>Explanation</div> for <p>good</p> answer 2"
               },
               ...
             ]
@@ -142,23 +136,10 @@ export class OpenaiService {
         },
         {
           role: 'user',
-          content: `
-          The LPIC-1 certification, which includes the LPIC-101 and LPIC-102 exams, covers a broad range of Linux system administration topics.
-          Here's a breakdown of the key topics for each exam:
-        
-          Propose a question about LPIC Exam
-          `,
-        },
-        {
-          role: 'assistant',
-          content: `Here is a question for the LPIC Exam: "${question}"`,
-        },
-        {
-          role: 'user',
-          content: `Please generate at least four responses for this question: "${question}"`,
+          content: `List at least five wrong or misleading responses for this question: ${question}`,
         },
       ],
-      temperature: 0.7,
+      temperature: 0.2,
     });
 
     const res = response.choices
@@ -167,7 +148,73 @@ export class OpenaiService {
         try {
           return parseDataToJson<GeneratedResponse[]>(data);
         } catch (e) {
-          const fileName = `output/${runId}-res-${uuid()}-${i}.json`;
+          const fileName = `output/wrong-${runId}-res-${uuid()}-${i}.json`;
+          this.saveToFile(data, fileName);
+          log.error(fileName, e);
+          return [];
+        }
+      })
+      .flat();
+    log.debug(`Generated answers: ${res.length}`);
+    return res;
+  }
+
+  public async generatePositiveAnswer(
+    runId: string,
+    question: string,
+    model: string,
+  ) {
+    log.debug(
+      `Generating good responses for question: ${question.substring(
+        0,
+        100,
+      )}...`,
+    );
+    const response = await this.openai.chat.completions.create({
+      model,
+      messages: [
+        {
+          role: 'system',
+          content: `
+          You are a helpful assistant. Your task is to generate correct responses on computer science based questions for a quizz.
+          User would be shown the text, and after correction, the explanation.
+          
+          Follow these guidelines:
+
+          - Provide at least one correct response. 
+          - Format each response with a simple, short, distinct and accurate text – one sentence is enough.
+          - Format each response with a detailed explanation about why it's correct – one or two sentences should be enough.
+          - Use HTML format for answer and explanation.
+          - Escape special characters.
+          - Return only a complete and parsable JSON, representing an array of objects, so that the user can parse it.
+          - For each object:
+            - The attribute "n" is the answer.
+            - The attribute "e" is the explanation of the answer.
+          - Output the answers in JSON format, following the provided structure:
+            [
+              {
+                "n": "Correct <span class='active'>response</span> 1",
+                "e": "Explanation for correct response 1"
+              },
+              ...
+            ]
+          `,
+        },
+        {
+          role: 'user',
+          content: `List at least one good responses for this question: ${question}`,
+        },
+      ],
+      temperature: 0.2,
+    });
+
+    const res = response.choices
+      .map(({ message }, i) => {
+        const data = message.content.trim();
+        try {
+          return parseDataToJson<GeneratedResponse[]>(data);
+        } catch (e) {
+          const fileName = `output/response-${runId}-res-${uuid()}-${i}.json`;
           this.saveToFile(data, fileName);
           log.error(fileName, e);
           return [];

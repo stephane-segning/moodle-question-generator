@@ -18,6 +18,10 @@ export abstract class BaseService extends CommandRunner {
     super();
   }
 
+  public abstract parseOpenAiKey(val: string);
+  public abstract parseOpenAiModel(val: string);
+  public abstract parseMaxGen(val: string);
+
   protected initOpenAI(apiKey?: string): Observable<void> {
     return fromPromise(this.openaiService.initOpenAI(apiKey));
   }

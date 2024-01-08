@@ -19,15 +19,16 @@ export const ensureDir = (dir: string) => {
   }
 };
 
-export const parseCsv = (file: string) => {
+export const parseCsv = async (file: string) => {
   const results = [];
-  return new Promise<CategoryTopic[]>((resolve, reject) => {
+  const topics = await new Promise<CategoryTopic[]>((resolve, reject) => {
     fs.createReadStream(file)
       .pipe(csv())
-      .on('data', (data) => results.push(data))
+      .on('data', (data) => data && results.push(data))
       .on('end', () => resolve(results))
       .on('error', (error) => reject(error));
   });
+  return topics.filter((t) => t.take === '1');
 };
 
 export const readFileAsObservable = bindNodeCallback(fs.readFile);

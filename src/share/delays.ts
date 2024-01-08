@@ -1,2 +1,2 @@
-export const ctDelay = 7_000;
-export const qtDelay = 20_000;
+export const ctDelay = 1_069;
+export const qtDelay = 443;

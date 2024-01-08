@@ -12,7 +12,7 @@ import { MultipleOptions } from '../models/multiple';
 import { ctDelay } from '../share/delays';
 
 const template = (exam: string, category: string, topic: string) => `
-Propose at least twenty questions relevant for the "${exam}" Exam in the field "${category}" on this topic "${topic}"
+Propose twenty questions relevant in the field "${category}" on this topic "${topic}"
 `;
 
 const log = new Logger('MultipleService');
